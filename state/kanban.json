@@ -4,6 +4,14 @@
   "review": [],
   "done": [
     {
+      "city": "encinitas",
+      "config": "config-example.json",
+      "repo": "encinitas-plumbing",
+      "status": "done",
+      "last_updated": "2026-02-16T18:59:12.000Z",
+      "notes": "Original site, template source"
+    },
+    {
       "city": "oceanside",
       "config": "config-oceanside.json",
       "repo": "oceanside-plumbing",
