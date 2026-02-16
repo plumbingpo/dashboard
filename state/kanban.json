@@ -1,0 +1,16 @@
+{
+  "backlog": [],
+  "in_progress": [],
+  "review": [],
+  "done": [
+    {
+      "city": "oceanside",
+      "config": "config-oceanside.json",
+      "repo": "oceanside-plumbing",
+      "status": "done",
+      "last_updated": "2026-02-16T17:39:47.140Z",
+      "notes": ""
+    }
+  ],
+  "failed": []
+}

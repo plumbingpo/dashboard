@@ -1,0 +1,11 @@
+{
+  "agents": [
+    {"id": "architect", "name": "Architect", "role": "System design & orchestration", "icon": "🏗️", "status": "idle", "lastActive": null, "currentTask": null},
+    {"id": "builder", "name": "Builder", "role": "Template code & SEO structure", "icon": "⚡", "status": "idle", "lastActive": null, "currentTask": null},
+    {"id": "designer", "name": "Designer", "role": "Visual design & image curation", "icon": "🎨", "status": "active", "lastActive": "2026-02-16T17:45:00Z", "currentTask": "Auditing and replacing all stock images"},
+    {"id": "uniquifier", "name": "Uniquifier", "role": "Content variation & rewriting", "icon": "✍️", "status": "idle", "lastActive": null, "currentTask": null},
+    {"id": "qa", "name": "QA Agent", "role": "Visual, functional & content testing", "icon": "🔍", "status": "idle", "lastActive": null, "currentTask": null},
+    {"id": "toolsmith", "name": "Toolsmith", "role": "Internal tools & infrastructure", "icon": "🔧", "status": "idle", "lastActive": null, "currentTask": null},
+    {"id": "tool-qa", "name": "Tool QA", "role": "Pipeline & tool validation", "icon": "🧪", "status": "idle", "lastActive": null, "currentTask": null}
+  ]
+}

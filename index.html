@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>⚡ Mission Control — Site Factory</title>
+<style>
+:root {
+  --bg-primary: #0a0e1a;
+  --bg-secondary: #111827;
+  --bg-card: #1a1f35;
+  --bg-hover: #1e2745;
+  --border: #2a3050;
+  --text-primary: #f0f2f5;
+  --text-secondary: #8892a8;
+  --text-muted: #505870;
+  --accent-blue: #3b82f6;
+  --accent-green: #22c55e;
+  --accent-red: #ef4444;
+  --accent-yellow: #f59e0b;
+  --accent-purple: #a855f7;
+  --accent-cyan: #06b6d4;
+  --accent-orange: #f97316;
+  --accent-pink: #ec4899;
+  --radius: 10px;
+  --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
+}
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+html { font-size: 14px; }
+body { font-family: var(--font); background: var(--bg-primary); color: var(--text-primary); min-height: 100vh; overflow-x: hidden; }
+a { color: var(--accent-blue); text-decoration: none; }
+a:hover { text-decoration: underline; }
+button { font-family: inherit; cursor: pointer; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* ─── TOPBAR ─── */
+.topbar {
+  position: sticky; top: 0; z-index: 100;
+  display: flex; align-items: center; gap: 16px;
+  padding: 0 24px; height: 56px;
+  background: rgba(10,14,26,0.85); backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+}
+.topbar-brand { font-size: 1.15rem; font-weight: 700; white-space: nowrap; display: flex; align-items: center; gap: 8px; }
+.topbar-brand span { font-size: 1.3rem; }
+.topbar-nav { display: flex; gap: 2px; margin-left: 24px; }
+.topbar-nav button {
+  background: none; border: none; color: var(--text-secondary);
+  padding: 8px 14px; border-radius: 6px; font-size: 0.85rem; font-weight: 500;
+  transition: all 0.15s;
+}
+.topbar-nav button:hover { color: var(--text-primary); background: var(--bg-hover); }
+.topbar-nav button.active { color: var(--text-primary); background: var(--bg-card); }
+.topbar-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+.topbar-updated { font-size: 0.75rem; color: var(--text-muted); white-space: nowrap; }
+.btn-refresh {
+  background: var(--bg-card); border: 1px solid var(--border); color: var(--text-secondary);
+  padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; display: flex; align-items: center; gap: 4px;
+  transition: all 0.15s;
+}
+.btn-refresh:hover { background: var(--bg-hover); color: var(--text-primary); border-color: var(--text-muted); }
+.btn-refresh.spinning svg { animation: spin 0.6s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ─── STATS BAR ─── */
+.stats-bar {
+  display: flex; gap: 12px; padding: 16px 24px;
+  overflow-x: auto; flex-shrink: 0;
+}
+.stat-card {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 14px 20px; min-width: 140px; flex: 1;
+  position: relative; overflow: hidden;
+}
+.stat-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+}
+.stat-card.total::before { background: var(--accent-blue); }
+.stat-card.done::before { background: var(--accent-green); }
+.stat-card.progress::before { background: var(--accent-yellow); }
+.stat-card.backlog::before { background: var(--text-muted); }
+.stat-card.failed::before { background: var(--accent-red); }
+.stat-card.agents::before { background: var(--accent-purple); }
+.stat-num { font-size: 1.75rem; font-weight: 800; line-height: 1; }
+.stat-card.total .stat-num { color: var(--accent-blue); }
+.stat-card.done .stat-num { color: var(--accent-green); }
+.stat-card.progress .stat-num { color: var(--accent-yellow); }
+.stat-card.backlog .stat-num { color: var(--text-secondary); }
+.stat-card.failed .stat-num { color: var(--accent-red); }
+.stat-card.agents .stat-num { color: var(--accent-purple); }
+.stat-label { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 4px; font-weight: 600; }
+
+/* ─── VIEW CONTAINERS ─── */
+.view { display: none; padding: 0 24px 24px; }
+.view.active { display: block; }
+
+/* ─── KANBAN VIEW ─── */
+.kanban-layout { display: grid; grid-template-columns: 1fr 420px; gap: 20px; }
+@media (max-width: 1100px) { .kanban-layout { grid-template-columns: 1fr; } }
+.kanban-board { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; align-content: start; }
+@media (max-width: 800px) { .kanban-board { grid-template-columns: repeat(2, 1fr); } }
+.kanban-col {}
+.kanban-col-header {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+  font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--text-muted); font-weight: 700;
+}
+.kanban-col-header .count {
+  background: var(--bg-hover); color: var(--text-secondary);
+  padding: 1px 7px; border-radius: 10px; font-size: 0.7rem; font-weight: 600;
+}
+.kanban-col-header .dot { width: 8px; height: 8px; border-radius: 50%; }
+.dot-backlog { background: var(--text-muted); }
+.dot-in_progress { background: var(--accent-blue); }
+.dot-review { background: var(--accent-yellow); }
+.dot-done { background: var(--accent-green); }
+.dot-failed { background: var(--accent-red); }
+.k-card {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px;
+  padding: 12px; margin-bottom: 8px; cursor: pointer;
+  transition: all 0.15s; position: relative;
+}
+.k-card:hover { background: var(--bg-hover); border-color: var(--text-muted); transform: translateY(-1px); }
+.k-card .city { font-weight: 600; font-size: 0.9rem; text-transform: capitalize; }
+.k-card .repo { font-size: 0.72rem; color: var(--text-muted); margin-top: 3px; }
+.k-card .notes { font-size: 0.72rem; color: var(--accent-orange); margin-top: 6px; }
+.k-card .time { font-size: 0.68rem; color: var(--text-muted); margin-top: 6px; }
+.k-card::after {
+  content: ''; position: absolute; left: 0; top: 8px; bottom: 8px; width: 3px; border-radius: 2px;
+}
+.k-card.backlog::after { background: var(--text-muted); }
+.k-card.in_progress::after { background: var(--accent-blue); }
+.k-card.review::after { background: var(--accent-yellow); }
+.k-card.done::after { background: var(--accent-green); }
+.k-card.failed::after { background: var(--accent-red); }
+.kanban-empty { color: var(--text-muted); font-size: 0.75rem; text-align: center; padding: 24px 8px; opacity: 0.5; }
+
+/* ─── FEED ─── */
+.feed-panel {
+  background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius);
+  display: flex; flex-direction: column; max-height: calc(100vh - 180px); min-height: 400px;
+}
+.feed-panel.fullscreen { max-height: none; }
+.feed-header { padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; }
+.feed-filters { display: flex; gap: 4px; flex-wrap: wrap; }
+.feed-filters button {
+  background: var(--bg-card); border: 1px solid var(--border); color: var(--text-muted);
+  padding: 4px 10px; border-radius: 14px; font-size: 0.7rem; font-weight: 500;
+  transition: all 0.15s;
+}
+.feed-filters button:hover { color: var(--text-secondary); border-color: var(--text-muted); }
+.feed-filters button.active { background: var(--accent-blue); border-color: var(--accent-blue); color: #fff; }
+.feed-search {
+  background: var(--bg-card); border: 1px solid var(--border); color: var(--text-primary);
+  padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; width: 100%;
+  outline: none; transition: border-color 0.15s;
+}
+.feed-search:focus { border-color: var(--accent-blue); }
+.feed-search::placeholder { color: var(--text-muted); }
+.feed-list { flex: 1; overflow-y: auto; }
+.feed-item {
+  padding: 10px 16px; border-bottom: 1px solid rgba(42,48,80,0.4);
+  display: flex; gap: 10px; align-items: flex-start; cursor: pointer;
+  transition: background 0.1s;
+}
+.feed-item:hover { background: var(--bg-hover); }
+.feed-item.expanded { background: var(--bg-card); }
+.agent-badge {
+  font-size: 0.65rem; padding: 2px 8px; border-radius: 4px; font-weight: 700;
+  white-space: nowrap; text-transform: uppercase; letter-spacing: 0.04em; margin-top: 1px; flex-shrink: 0;
+}
+.agent-badge.pipeline { background: rgba(59,130,246,0.15); color: #60a5fa; }
+.agent-badge.builder { background: rgba(34,197,94,0.15); color: #4ade80; }
+.agent-badge.designer { background: rgba(168,85,247,0.15); color: #c084fc; }
+.agent-badge.uniquifier { background: rgba(6,182,212,0.15); color: #67e8f9; }
+.agent-badge.qa { background: rgba(239,68,68,0.15); color: #f87171; }
+.agent-badge.deployer { background: rgba(245,158,11,0.15); color: #fbbf24; }
+.agent-badge.toolsmith { background: rgba(249,115,22,0.15); color: #fb923c; }
+.agent-badge.fixer { background: rgba(236,72,153,0.15); color: #f472b6; }
+.agent-badge.architect { background: rgba(59,130,246,0.15); color: #93c5fd; }
+.feed-content { flex: 1; min-width: 0; }
+.feed-action { font-size: 0.82rem; color: var(--text-primary); font-weight: 500; }
+.feed-action .city { color: var(--accent-blue); font-weight: 600; text-transform: capitalize; }
+.feed-meta { font-size: 0.7rem; color: var(--text-muted); margin-top: 2px; }
+.feed-expanded { margin-top: 8px; padding: 8px 12px; background: var(--bg-primary); border-radius: 6px; font-size: 0.75rem; color: var(--text-secondary); }
+.feed-expanded .row { display: flex; gap: 8px; margin-bottom: 3px; }
+.feed-expanded .label { color: var(--text-muted); min-width: 60px; }
+
+/* ─── SITES VIEW ─── */
+.sites-toolbar {
+  display: flex; gap: 12px; margin-bottom: 16px; align-items: center; flex-wrap: wrap;
+}
+.sites-toolbar input {
+  background: var(--bg-card); border: 1px solid var(--border); color: var(--text-primary);
+  padding: 8px 14px; border-radius: 6px; font-size: 0.85rem; width: 260px; outline: none;
+}
+.sites-toolbar input:focus { border-color: var(--accent-blue); }
+.sites-toolbar input::placeholder { color: var(--text-muted); }
+.sites-toolbar select {
+  background: var(--bg-card); border: 1px solid var(--border); color: var(--text-secondary);
+  padding: 8px 12px; border-radius: 6px; font-size: 0.8rem; outline: none;
+}
+.sites-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+.site-card {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 16px; transition: all 0.15s; cursor: pointer;
+}
+.site-card:hover { background: var(--bg-hover); border-color: var(--text-muted); transform: translateY(-1px); }
+.site-card .city-name { font-weight: 700; font-size: 1rem; text-transform: capitalize; margin-bottom: 6px; }
+.site-card .links { display: flex; gap: 12px; margin-bottom: 8px; }
+.site-card .links a { font-size: 0.75rem; color: var(--accent-blue); }
+.status-badge {
+  display: inline-block; font-size: 0.65rem; padding: 2px 8px; border-radius: 10px;
+  font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+}
+.status-badge.done { background: rgba(34,197,94,0.15); color: #4ade80; }
+.status-badge.in_progress { background: rgba(59,130,246,0.15); color: #60a5fa; }
+.status-badge.review { background: rgba(245,158,11,0.15); color: #fbbf24; }
+.status-badge.failed { background: rgba(239,68,68,0.15); color: #f87171; }
+.status-badge.backlog { background: rgba(80,88,112,0.2); color: var(--text-muted); }
+.site-card .meta { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-top: 10px; font-size: 0.72rem; color: var(--text-muted); }
+.site-card .meta span { }
+.site-card .meta .val { color: var(--text-secondary); }
+
+/* ─── AGENTS VIEW ─── */
+.agents-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+.agent-card {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 16px; display: flex; gap: 14px; cursor: pointer; transition: all 0.15s;
+}
+.agent-card:hover { background: var(--bg-hover); border-color: var(--text-muted); }
+.agent-icon { font-size: 2rem; line-height: 1; }
+.agent-info { flex: 1; }
+.agent-info .name { font-weight: 700; font-size: 0.95rem; display: flex; align-items: center; gap: 8px; }
+.agent-info .role { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
+.agent-info .task { font-size: 0.78rem; color: var(--accent-cyan); margin-top: 6px; }
+.agent-info .agent-meta { font-size: 0.7rem; color: var(--text-muted); margin-top: 6px; display: flex; gap: 12px; }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+.status-dot.active { background: var(--accent-green); box-shadow: 0 0 6px var(--accent-green); }
+.status-dot.idle { background: var(--text-muted); }
+.status-dot.error { background: var(--accent-red); box-shadow: 0 0 6px var(--accent-red); }
+
+/* ─── MODAL ─── */
+.modal-overlay {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(4px); z-index: 200; justify-content: center; align-items: start;
+  padding: 40px 20px; overflow-y: auto;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px;
+  width: 100%; max-width: 700px; overflow: hidden;
+  animation: modalIn 0.2s ease;
+}
+@keyframes modalIn { from { opacity: 0; transform: translateY(20px); } }
+.modal-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 20px 24px; border-bottom: 1px solid var(--border);
+}
+.modal-header h2 { font-size: 1.2rem; text-transform: capitalize; display: flex; align-items: center; gap: 10px; }
+.modal-close {
+  background: var(--bg-card); border: 1px solid var(--border); color: var(--text-secondary);
+  width: 32px; height: 32px; border-radius: 6px; font-size: 1.1rem;
+  display: flex; align-items: center; justify-content: center;
+}
+.modal-close:hover { background: var(--bg-hover); color: var(--text-primary); }
+.modal-body { padding: 20px 24px; max-height: 60vh; overflow-y: auto; }
+.modal-section { margin-bottom: 20px; }
+.modal-section h3 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); margin-bottom: 8px; font-weight: 700; }
+.modal-links { display: flex; gap: 16px; font-size: 0.85rem; }
+.modal-timeline-item {
+  display: flex; gap: 10px; padding: 8px 0; border-bottom: 1px solid rgba(42,48,80,0.3);
+  font-size: 0.8rem;
+}
+.modal-timeline-item .time { color: var(--text-muted); font-size: 0.72rem; min-width: 70px; flex-shrink: 0; }
+.modal-config { font-size: 0.8rem; color: var(--text-secondary); }
+.modal-config .row { display: flex; gap: 8px; margin-bottom: 4px; }
+.modal-config .label { color: var(--text-muted); min-width: 100px; }
+
+/* ─── PULSE ANIMATION ─── */
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+.pulse { animation: pulse 2s ease-in-out infinite; }
+
+/* ─── RESPONSIVE ─── */
+@media (max-width: 768px) {
+  .topbar { padding: 0 12px; gap: 8px; }
+  .topbar-brand { font-size: 1rem; }
+  .topbar-nav { margin-left: 8px; }
+  .topbar-nav button { padding: 6px 10px; font-size: 0.78rem; }
+  .stats-bar { padding: 12px; gap: 8px; }
+  .stat-card { min-width: 100px; padding: 10px 14px; }
+  .stat-num { font-size: 1.4rem; }
+  .view { padding: 0 12px 12px; }
+  .kanban-layout { grid-template-columns: 1fr; }
+  .kanban-board { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-brand"><span>⚡</span> Mission Control</div>
+  <nav class="topbar-nav" id="nav">
+    <button data-view="kanban" class="active">Kanban</button>
+    <button data-view="sites">Sites</button>
+    <button data-view="agents">Agents</button>
+    <button data-view="feed">Feed</button>
+  </nav>
+  <div class="topbar-right">
+    <span class="topbar-updated" id="lastUpdated">—</span>
+    <button class="btn-refresh" id="refreshBtn" onclick="refreshData()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+      Refresh
+    </button>
+  </div>
+</div>
+
+<!-- STATS -->
+<div class="stats-bar" id="statsBar"></div>
+
+<!-- VIEWS -->
+<div class="view active" id="view-kanban">
+  <div class="kanban-layout">
+    <div class="kanban-board" id="kanbanBoard"></div>
+    <div class="feed-panel" id="kanbanFeed">
+      <div class="feed-header">
+        <div class="feed-filters" id="feedFilters"></div>
+        <input type="text" class="feed-search" id="feedSearch" placeholder="Search city or action…">
+      </div>
+      <div class="feed-list" id="feedList"></div>
+    </div>
+  </div>
+</div>
+
+<div class="view" id="view-sites">
+  <div class="sites-toolbar">
+    <input type="text" id="sitesSearch" placeholder="Search sites…">
+    <select id="sitesFilter">
+      <option value="all">All statuses</option>
+      <option value="done">Done</option>
+      <option value="in_progress">In Progress</option>
+      <option value="review">Review</option>
+      <option value="failed">Failed</option>
+      <option value="backlog">Backlog</option>
+    </select>
+    <select id="sitesSort">
+      <option value="name">Sort: Name</option>
+      <option value="date">Sort: Date</option>
+      <option value="status">Sort: Status</option>
+    </select>
+  </div>
+  <div class="sites-grid" id="sitesGrid"></div>
+</div>
+
+<div class="view" id="view-agents">
+  <div class="agents-grid" id="agentsGrid"></div>
+</div>
+
+<div class="view" id="view-feed">
+  <div class="feed-panel fullscreen" style="max-height: calc(100vh - 160px);">
+    <div class="feed-header">
+      <div class="feed-filters" id="feedFiltersFull"></div>
+      <input type="text" class="feed-search" id="feedSearchFull" placeholder="Search city or action…">
+    </div>
+    <div class="feed-list" id="feedListFull"></div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modalTitle"></h2>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<script>
+// ─── STATE ───
+let kanbanData = null;
+let feedData = [];
+let agentsData = [];
+let lastFetchTime = null;
+let feedFilter = 'all';
+let feedSearchQuery = '';
+let expandedFeedId = null;
+let currentView = 'kanban';
+
+// ─── AGENT COLORS ───
+const agentColors = {
+  pipeline: 'pipeline', builder: 'builder', designer: 'designer',
+  uniquifier: 'uniquifier', qa: 'qa', deployer: 'deployer',
+  toolsmith: 'toolsmith', fixer: 'fixer', architect: 'architect'
+};
+
+// ─── RELATIVE TIME ───
+function relTime(iso) {
+  if (!iso) return '—';
+  const diff = Date.now() - new Date(iso).getTime();
+  const s = Math.floor(diff / 1000);
+  if (s < 60) return `${s}s ago`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.floor(h / 24);
+  return `${d}d ago`;
+}
+
+function shortTime(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+
+// ─── DATA LOADING ───
+async function loadData() {
+  try {
+    const [kb, feedText, ag] = await Promise.all([
+      fetch('state/kanban.json').then(r => r.json()),
+      fetch('state/activity-feed.jsonl').then(r => r.text()),
+      fetch('state/agents.json').then(r => r.json()).catch(() => ({ agents: [] }))
+    ]);
+    kanbanData = kb;
+    feedData = feedText.trim().split('\n').filter(Boolean).map(l => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean);
+    agentsData = ag.agents || [];
+    lastFetchTime = Date.now();
+    render();
+  } catch (e) {
+    console.error('Load error:', e);
+  }
+}
+
+async function refreshData() {
+  const btn = document.getElementById('refreshBtn');
+  btn.classList.add('spinning');
+  await loadData();
+  setTimeout(() => btn.classList.remove('spinning'), 600);
+}
+
+// ─── RENDER ───
+function render() {
+  renderStats();
+  renderKanban();
+  renderFeed('feedList', 'feedFilters', 'feedSearch');
+  renderFeed('feedListFull', 'feedFiltersFull', 'feedSearchFull');
+  renderSites();
+  renderAgents();
+  updateTimestamp();
+}
+
+function updateTimestamp() {
+  const el = document.getElementById('lastUpdated');
+  if (lastFetchTime) {
+    const update = () => { el.textContent = `Updated ${relTime(new Date(lastFetchTime).toISOString())}`; };
+    update();
+    clearInterval(window._tsInterval);
+    window._tsInterval = setInterval(update, 5000);
+  }
+}
+
+// ─── STATS ───
+function renderStats() {
+  if (!kanbanData) return;
+  const kb = kanbanData;
+  const counts = {
+    backlog: (kb.backlog||[]).length,
+    progress: (kb.in_progress||[]).length,
+    review: (kb.review||[]).length,
+    done: (kb.done||[]).length,
+    failed: (kb.failed||[]).length
+  };
+  const total = Object.values(counts).reduce((a,b) => a+b, 0);
+  const activeAgents = agentsData.filter(a => a.status === 'active').length;
+  document.getElementById('statsBar').innerHTML = `
+    <div class="stat-card total"><div class="stat-num">${total}</div><div class="stat-label">Total Cities</div></div>
+    <div class="stat-card done"><div class="stat-num">${counts.done}</div><div class="stat-label">Deployed</div></div>
+    <div class="stat-card progress"><div class="stat-num">${counts.progress}</div><div class="stat-label">In Progress</div></div>
+    <div class="stat-card backlog"><div class="stat-num">${counts.backlog}</div><div class="stat-label">Backlog</div></div>
+    <div class="stat-card failed"><div class="stat-num">${counts.failed}</div><div class="stat-label">Failed</div></div>
+    <div class="stat-card agents"><div class="stat-num">${activeAgents}<span style="font-size:0.9rem;color:var(--text-muted)">/${agentsData.length}</span></div><div class="stat-label">Agents Active</div></div>
+  `;
+}
+
+// ─── KANBAN ───
+function renderKanban() {
+  if (!kanbanData) return;
+  const cols = ['backlog','in_progress','review','done','failed'];
+  const labels = { backlog:'Backlog', in_progress:'In Progress', review:'Review', done:'Done', failed:'Failed' };
+  document.getElementById('kanbanBoard').innerHTML = cols.map(col => {
+    const items = kanbanData[col] || [];
+    return `<div class="kanban-col">
+      <div class="kanban-col-header">
+        <span class="dot dot-${col}"></span>
+        ${labels[col]}
+        <span class="count">${items.length}</span>
+      </div>
+      ${items.length ? items.map(item => `
+        <div class="k-card ${col}" onclick="openCityModal('${item.city}')">
+          <div class="city">${item.city}</div>
+          <div class="repo">${item.repo || ''}</div>
+          ${item.notes ? `<div class="notes">${item.notes}</div>` : ''}
+          <div class="time">${relTime(item.last_updated)}</div>
+        </div>
+      `).join('') : '<div class="kanban-empty">No cities</div>'}
+    </div>`;
+  }).join('');
+}
+
+// ─── FEED ───
+function getFilteredFeed() {
+  let items = [...feedData].reverse();
+  if (feedFilter !== 'all') {
+    items = items.filter(e => e.agent === feedFilter);
+  }
+  if (feedSearchQuery) {
+    const q = feedSearchQuery.toLowerCase();
+    items = items.filter(e => (e.city||'').toLowerCase().includes(q) || (e.action||'').toLowerCase().includes(q) || (e.details||'').toLowerCase().includes(q));
+  }
+  return items;
+}
+
+function renderFeed(listId, filterId, searchId) {
+  const filterEl = document.getElementById(filterId);
+  const agents = ['all','pipeline','builder','designer','uniquifier','qa','deployer','fixer','toolsmith'];
+  filterEl.innerHTML = agents.map(a =>
+    `<button class="${feedFilter===a?'active':''}" onclick="setFeedFilter('${a}')">${a === 'all' ? 'All' : a.charAt(0).toUpperCase()+a.slice(1)}</button>`
+  ).join('');
+
+  const searchEl = document.getElementById(searchId);
+  searchEl.value = feedSearchQuery;
+  searchEl.oninput = debounce(e => { feedSearchQuery = e.target.value; renderAllFeeds(); }, 300);
+
+  const listEl = document.getElementById(listId);
+  const items = getFilteredFeed();
+
+  // Virtual scrolling: render in batches
+  const BATCH = 50;
+  const rendered = items.slice(0, BATCH);
+  listEl.innerHTML = rendered.map(e => feedItemHTML(e)).join('');
+
+  if (items.length > BATCH) {
+    let loaded = BATCH;
+    const sentinel = document.createElement('div');
+    sentinel.style.height = '1px';
+    listEl.appendChild(sentinel);
+    const obs = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && loaded < items.length) {
+        const next = items.slice(loaded, loaded + BATCH);
+        sentinel.insertAdjacentHTML('beforebegin', next.map(e => feedItemHTML(e)).join(''));
+        loaded += BATCH;
+        if (loaded >= items.length) obs.disconnect();
+      }
+    }, { root: listEl, threshold: 0 });
+    obs.observe(sentinel);
+  }
+}
+
+function feedItemHTML(e) {
+  const isExpanded = expandedFeedId === e.id;
+  return `<div class="feed-item ${isExpanded ? 'expanded' : ''}" onclick="toggleFeedExpand('${e.id||''}')">
+    <span class="agent-badge ${e.agent}">${e.agent}</span>
+    <div class="feed-content">
+      <div class="feed-action">${e.action} — <span class="city">${e.city}</span></div>
+      <div class="feed-meta">${e.details || ''} · ${relTime(e.timestamp)}</div>
+      ${isExpanded ? `<div class="feed-expanded">
+        <div class="row"><span class="label">Time:</span> ${new Date(e.timestamp).toLocaleString()}</div>
+        ${e.duration ? `<div class="row"><span class="label">Duration:</span> ${e.duration}</div>` : ''}
+        <div class="row"><span class="label">Agent:</span> ${e.agent}</div>
+        <div class="row"><span class="label">Details:</span> ${e.details || '—'}</div>
+        ${e.id ? `<div class="row"><span class="label">ID:</span> <span style="font-family:monospace;font-size:0.7rem">${e.id}</span></div>` : ''}
+      </div>` : ''}
+    </div>
+  </div>`;
+}
+
+function renderAllFeeds() {
+  renderFeed('feedList', 'feedFilters', 'feedSearch');
+  renderFeed('feedListFull', 'feedFiltersFull', 'feedSearchFull');
+}
+
+function setFeedFilter(f) { feedFilter = f; renderAllFeeds(); }
+function toggleFeedExpand(id) {
+  expandedFeedId = expandedFeedId === id ? null : id;
+  renderAllFeeds();
+}
+
+// ─── SITES ───
+function getAllSites() {
+  if (!kanbanData) return [];
+  const sites = [];
+  for (const [status, items] of Object.entries(kanbanData)) {
+    for (const item of (items || [])) {
+      sites.push({ ...item, status: status === 'in_progress' ? 'in_progress' : status });
+    }
+  }
+  return sites;
+}
+
+function renderSites() {
+  const sites = getAllSites();
+  const search = (document.getElementById('sitesSearch')?.value || '').toLowerCase();
+  const filter = document.getElementById('sitesFilter')?.value || 'all';
+  const sort = document.getElementById('sitesSort')?.value || 'name';
+
+  let filtered = sites;
+  if (filter !== 'all') filtered = filtered.filter(s => s.status === filter);
+  if (search) filtered = filtered.filter(s => s.city.toLowerCase().includes(search));
+
+  if (sort === 'name') filtered.sort((a,b) => a.city.localeCompare(b.city));
+  else if (sort === 'date') filtered.sort((a,b) => new Date(b.last_updated||0) - new Date(a.last_updated||0));
+  else if (sort === 'status') filtered.sort((a,b) => a.status.localeCompare(b.status));
+
+  const cityEvents = {};
+  feedData.forEach(e => {
+    if (!cityEvents[e.city]) cityEvents[e.city] = 0;
+    cityEvents[e.city]++;
+  });
+
+  document.getElementById('sitesGrid').innerHTML = filtered.length ? filtered.map(s => `
+    <div class="site-card" onclick="openCityModal('${s.city}')">
+      <div class="city-name">${s.city}</div>
+      <div class="links">
+        <a href="https://plumbingpo.github.io/${s.repo}/" target="_blank" onclick="event.stopPropagation()">🌐 Live Site</a>
+        <a href="https://github.com/plumbingpo/${s.repo}" target="_blank" onclick="event.stopPropagation()">📦 GitHub</a>
+      </div>
+      <span class="status-badge ${s.status}">${s.status.replace('_',' ')}</span>
+      <div class="meta">
+        <span>Updated: <span class="val">${relTime(s.last_updated)}</span></span>
+        <span>Events: <span class="val">${cityEvents[s.city]||0}</span></span>
+        <span>Pages: <span class="val">26</span></span>
+        <span>QA: <span class="val" style="color:var(--accent-green)">✓ Pass</span></span>
+      </div>
+    </div>
+  `).join('') : '<div style="color:var(--text-muted);padding:40px;text-align:center">No sites found</div>';
+}
+
+// ─── AGENTS ───
+function renderAgents() {
+  const taskCounts = {};
+  feedData.forEach(e => {
+    taskCounts[e.agent] = (taskCounts[e.agent] || 0) + 1;
+  });
+
+  document.getElementById('agentsGrid').innerHTML = agentsData.map(a => `
+    <div class="agent-card" onclick="setFeedFilter('${a.id}');navigate('feed')">
+      <div class="agent-icon">${a.icon}</div>
+      <div class="agent-info">
+        <div class="name">
+          <span class="status-dot ${a.status}${a.status==='active'?' pulse':''}"></span>
+          ${a.name}
+        </div>
+        <div class="role">${a.role}</div>
+        ${a.currentTask ? `<div class="task">▸ ${a.currentTask}</div>` : ''}
+        <div class="agent-meta">
+          <span>${taskCounts[a.id]||0} tasks</span>
+          ${a.lastActive ? `<span>Active ${relTime(a.lastActive)}</span>` : '<span>Never active</span>'}
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ─── MODAL ───
+function openCityModal(city) {
+  const sites = getAllSites();
+  const site = sites.find(s => s.city === city);
+  if (!site) return;
+
+  const events = feedData.filter(e => e.city === city).reverse();
+
+  document.getElementById('modalTitle').innerHTML = `
+    <span class="status-dot ${site.status === 'done' ? 'active' : site.status === 'failed' ? 'error' : 'idle'}"></span>
+    ${city}
+    <span class="status-badge ${site.status}">${site.status.replace('_',' ')}</span>
+  `;
+
+  document.getElementById('modalBody').innerHTML = `
+    <div class="modal-section">
+      <h3>Links</h3>
+      <div class="modal-links">
+        <a href="https://plumbingpo.github.io/${site.repo}/" target="_blank">🌐 Live Site</a>
+        <a href="https://github.com/plumbingpo/${site.repo}" target="_blank">📦 GitHub Repo</a>
+      </div>
+    </div>
+    <div class="modal-section">
+      <h3>Config</h3>
+      <div class="modal-config">
+        <div class="row"><span class="label">Repository:</span> ${site.repo}</div>
+        <div class="row"><span class="label">Last Updated:</span> ${new Date(site.last_updated).toLocaleString()}</div>
+        ${site.notes ? `<div class="row"><span class="label">Notes:</span> ${site.notes}</div>` : ''}
+      </div>
+    </div>
+    <div class="modal-section">
+      <h3>Timeline (${events.length} events)</h3>
+      ${events.map(e => `
+        <div class="modal-timeline-item">
+          <span class="time">${shortTime(e.timestamp)}</span>
+          <span class="agent-badge ${e.agent}" style="font-size:0.6rem">${e.agent}</span>
+          <span style="flex:1;font-size:0.8rem">${e.action} — ${e.details||''}</span>
+          ${e.duration ? `<span style="color:var(--text-muted);font-size:0.72rem">${e.duration}</span>` : ''}
+        </div>
+      `).join('')}
+    </div>
+  `;
+
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('open');
+}
+
+// ─── NAVIGATION ───
+function navigate(view) {
+  currentView = view;
+  window.location.hash = view;
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-' + view)?.classList.add('active');
+  document.querySelectorAll('#nav button').forEach(b => {
+    b.classList.toggle('active', b.dataset.view === view);
+  });
+}
+
+document.querySelectorAll('#nav button').forEach(b => {
+  b.addEventListener('click', () => navigate(b.dataset.view));
+});
+
+// Sites toolbar events
+document.getElementById('sitesSearch')?.addEventListener('input', debounce(() => renderSites(), 300));
+document.getElementById('sitesFilter')?.addEventListener('change', () => renderSites());
+document.getElementById('sitesSort')?.addEventListener('change', () => renderSites());
+
+// Hash routing
+function handleHash() {
+  const hash = (window.location.hash || '#kanban').slice(1);
+  if (hash.startsWith('city/')) {
+    navigate('kanban');
+    setTimeout(() => openCityModal(hash.split('/')[1]), 100);
+  } else if (['kanban','sites','agents','feed'].includes(hash)) {
+    navigate(hash);
+  } else {
+    navigate('kanban');
+  }
+}
+window.addEventListener('hashchange', handleHash);
+
+// Keyboard
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeModal();
+});
+
+// ─── UTILS ───
+function debounce(fn, ms) {
+  let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+}
+
+// ─── INIT ───
+loadData();
+handleHash();
+setInterval(loadData, 15000);
+</script>
+</body>
+</html>
